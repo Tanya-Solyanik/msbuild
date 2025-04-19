@@ -21,21 +21,17 @@ namespace System.Deployment.Internal.CodeSigning
         //
         // PInvoke dll's.
         //
-        internal const String CRYPT32 = "crypt32.dll";
-        internal const String KERNEL32 = "kernel32.dll";
-#if (true)
+        internal const string CRYPT32 = "crypt32.dll";
+        internal const string KERNEL32 = "kernel32.dll";
 
 #if FEATURE_MAIN_CLR_MODULE_USES_CORE_NAME
         internal const String MSCORWKS = "coreclr.dll";
 #elif USE_OLD_MSCORWKS_NAME // for updating devdiv toolset until it has clr.dll
         internal const String MSCORWKS = "mscorwks.dll";
-#else //FEATURE_MAIN_CLR_MODULE_USES_CORE_NAME
-        internal const String MSCORWKS = "clr.dll";
-#endif //FEATURE_MAIN_CLR_MODULE_USES_CORE_NAME
+#else // FEATURE_MAIN_CLR_MODULE_USES_CORE_NAME
+        internal const string MSCORWKS = "clr.dll";
+#endif // FEATURE_MAIN_CLR_MODULE_USES_CORE_NAME
 
-#else
-        internal const String MSCORWKS = "isowhidbey.dll";
-#endif
         //
         // Constants.
         //
@@ -112,8 +108,8 @@ namespace System.Deployment.Internal.CodeSigning
             internal uint cbSize;             // sizeof(AXL_TIMESTAMPER_INFO).
             internal uint dwError;            // Error code.
             internal uint algHash;            // Hash algorithm (ALG_ID).
-            internal _FILETIME ftTimestamp;        // Timestamp time.
-            internal IntPtr pChainContext;      // Timestamper's chain context.
+            internal _FILETIME ftTimestamp;   // Timestamp time.
+            internal IntPtr pChainContext;    // Timestamper's chain context.
         }
 
         //
@@ -140,34 +136,9 @@ namespace System.Deployment.Internal.CodeSigning
 
         [DllImport(MSCORWKS, CharSet = CharSet.Auto, SetLastError = true)]
         internal static extern
-        int CertVerifyAuthenticodeLicense(
-            [In] ref CRYPT_DATA_BLOB pLicenseBlob,
-            [In] uint dwFlags,
-            [In, Out] ref AXL_SIGNER_INFO pSignerInfo,
-            [In, Out] ref AXL_TIMESTAMPER_INFO pTimestamperInfo);
-
-        [DllImport(MSCORWKS, CharSet = CharSet.Auto, SetLastError = true)]
-        internal static extern
-        int CertFreeAuthenticodeSignerInfo(
-            [In] ref AXL_SIGNER_INFO pSignerInfo);
-
-        [DllImport(MSCORWKS, CharSet = CharSet.Auto, SetLastError = true)]
-        internal static extern
-        int CertFreeAuthenticodeTimestamperInfo(
-            [In] ref AXL_TIMESTAMPER_INFO pTimestamperInfo);
-
-        [DllImport(MSCORWKS, CharSet = CharSet.Auto, SetLastError = true)]
-        internal static extern
         int _AxlGetIssuerPublicKeyHash(
             [In] IntPtr pCertContext,
             [In, Out] ref IntPtr ppwszPublicKeyHash);
-
-        [DllImport(MSCORWKS, CharSet = CharSet.Auto, SetLastError = true)]
-        internal static extern
-        int _AxlRSAKeyValueToPublicKeyToken(
-            [In] ref CRYPT_DATA_BLOB pModulusBlob,
-            [In] ref CRYPT_DATA_BLOB pExponentBlob,
-            [In, Out] ref IntPtr ppwszPublicKeyToken);
 
         [DllImport(MSCORWKS, CharSet = CharSet.Auto, SetLastError = true)]
         internal static extern
@@ -184,7 +155,7 @@ namespace System.Deployment.Internal.CodeSigning
         [StructLayout(LayoutKind.Sequential)]
         internal struct CRYPT_TIMESTAMP_CONTEXT
         {
-            internal uint cbEncoded;      // DWORD->unsigned int
+            internal uint cbEncoded;        // DWORD->unsigned int
             internal IntPtr pbEncoded;      // BYTE*
             internal IntPtr pTimeStamp;     // PCRYPT_TIMESTAMP_INFO->_CRYPT_TIMESTAMP_INFO*
         }
@@ -237,30 +208,18 @@ namespace System.Deployment.Internal.CodeSigning
 
     internal class ManifestSignedXml2 : SignedXml
     {
-        private bool _verify = false;
         private const string Sha256SignatureMethodUri = @"http://www.w3.org/2000/09/xmldsig#rsa-sha256";
         private const string Sha256DigestMethod = @"http://www.w3.org/2000/09/xmldsig#sha256";
 
-        internal ManifestSignedXml2()
-            : base()
-        {
-            init();
-        }
         internal ManifestSignedXml2(XmlElement elem)
             : base(elem)
         {
             init();
         }
+
         internal ManifestSignedXml2(XmlDocument document)
             : base(document)
         {
-            init();
-        }
-
-        internal ManifestSignedXml2(XmlDocument document, bool verify)
-            : base(document)
-        {
-            _verify = verify;
             init();
         }
 
@@ -284,13 +243,7 @@ namespace System.Deployment.Internal.CodeSigning
 
         public override XmlElement GetIdElement(XmlDocument document, string idValue)
         {
-            // We only care about Id references inside of the KeyInfo section
-            if (_verify)
-            {
-                return base.GetIdElement(document, idValue);
-            }
-
-            KeyInfo keyInfo = this.KeyInfo;
+            KeyInfo keyInfo = KeyInfo;
             if (keyInfo.Id != idValue)
             {
                 return null;
@@ -306,7 +259,7 @@ namespace System.Deployment.Internal.CodeSigning
         private XmlDocument _manifestDom = null;
         private CmiStrongNameSignerInfo _strongNameSignerInfo = null;
         private CmiAuthenticodeSignerInfo _authenticodeSignerInfo = null;
-        private bool _useSha256;
+        private readonly bool _useSha256;
 
         private const string Sha256SignatureMethodUri = @"http://www.w3.org/2000/09/xmldsig#rsa-sha256";
         private const string Sha256DigestMethod = @"http://www.w3.org/2000/09/xmldsig#sha256";
@@ -323,7 +276,7 @@ namespace System.Deployment.Internal.CodeSigning
 
         internal void Sign(CmiManifestSigner2 signer)
         {
-            Sign(signer, null);
+            Sign(signer, timeStampUrl: null);
         }
 
         internal void Sign(CmiManifestSigner2 signer, string timeStampUrl, bool disallowMansignTimestampFallback = false)
@@ -462,7 +415,7 @@ namespace System.Deployment.Internal.CodeSigning
         /// <param name="oldCsp"></param>
         /// <param name="useSha256">Whether to use sha256</param>
         /// <returns></returns>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Cryptographic.Standard", "CA5358:RSAProviderNeeds2048bitKey", Justification = "SHA1 is retained for compatibility reasons as an option in VisualStudio signing page and consequently in the trust manager, default is SHA2.")]
+        [SuppressMessage("Microsoft.Cryptographic.Standard", "CA5358:RSAProviderNeeds2048bitKey", Justification = "SHA1 is retained for compatibility reasons as an option in VisualStudio signing page and consequently in the trust manager, default is SHA2.")]
         internal static RSACryptoServiceProvider GetFixedRSACryptoServiceProvider(RSACryptoServiceProvider oldCsp, bool useSha256)
         {
             if (!useSha256)
@@ -526,6 +479,7 @@ namespace System.Deployment.Internal.CodeSigning
                     cspPublicKeyBlob = rsaCsp.ExportCspBlob(false);
                 }
             }
+
             // Now compute the public key token.
             unsafe
             {
@@ -747,7 +701,7 @@ namespace System.Deployment.Internal.CodeSigning
         private static string ObtainRFC3161Timestamp(string timeStampUrl, string signatureValue, bool useSha256)
         {
             byte[] sigValueBytes = Convert.FromBase64String(signatureValue);
-            string timestamp = String.Empty;
+            string timestamp = string.Empty;
 
             string algId = useSha256 ? Win32.szOID_NIST_sha256 : Win32.szOID_OIWSEC_sha1;
 
@@ -847,7 +801,7 @@ namespace System.Deployment.Internal.CodeSigning
             nsm.AddNamespace("ds", SignedXml.XmlDsigNamespaceUrl);
             nsm.AddNamespace("as", AuthenticodeNamespaceUri);
 
-            string timestamp = String.Empty;
+            string timestamp = string.Empty;
 
             try
             {
@@ -1014,7 +968,8 @@ namespace System.Deployment.Internal.CodeSigning
                     digit = (array[i] & 0x0f);
                     hexOrder[j++] = s_hexValues[digit];
                 }
-                result = new String(hexOrder);
+
+                result = new string(hexOrder);
 #endif
             }
             return result;
@@ -1065,13 +1020,12 @@ namespace System.Deployment.Internal.CodeSigning
                 throw new ArgumentNullException(nameof(strongNameKey));
             }
 
-#if (true) // BUGBUG: Fusion only supports RSA. Do we throw if not RSA???
-            RSA rsa = strongNameKey as RSA;
-            if (rsa == null)
+            // Fusion only supports RSA.
+            if (strongNameKey is not RSA)
             {
                 throw new ArgumentNullException(nameof(strongNameKey));
             }
-#endif
+
             _strongNameKey = strongNameKey;
             _certificate = certificate;
             _certificates = new X509Certificate2Collection();

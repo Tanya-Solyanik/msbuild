@@ -37,7 +37,7 @@ using Microsoft.Build.Shared.FileSystem;
 namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
 {
     /// <summary>
-    /// Provides a set of utility functions for manipulating security permision sets and signing.
+    /// Provides a set of utility functions for manipulating security permission sets and signing.
     /// </summary>
     [ComVisible(false)]
     public static class SecurityUtilities
@@ -116,7 +116,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
         internal static PermissionSet ComputeZonePermissionSetHelper(string targetZone, PermissionSet includedPermissionSet, ITaskItem[] dependencies, string targetFrameworkMoniker)
         {
             // Custom Set.
-            if (String.IsNullOrEmpty(targetZone) || String.Equals(targetZone, Custom, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(targetZone) || string.Equals(targetZone, Custom, StringComparison.OrdinalIgnoreCase))
             {
                 // just return the included set, no magic
                 return includedPermissionSet.Copy();
@@ -133,7 +133,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
             {
                 LocalIntranet => GetNamedPermissionSet(LocalIntranet, targetFrameworkMoniker),
                 Internet => GetNamedPermissionSet(Internet, targetFrameworkMoniker),
-                _ => throw new ArgumentException(String.Empty /* no message */, nameof(targetZone)),
+                _ => throw new ArgumentException(string.Empty /* no message */, nameof(targetZone)),
             };
         }
 
@@ -253,7 +253,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
             {
                 LocalIntranet => SecurityZone.Intranet,
                 Internet => SecurityZone.Internet,
-                _ => throw new ArgumentException(String.Empty /* no message */, nameof(targetZone)),
+                _ => throw new ArgumentException(string.Empty /* no message */, nameof(targetZone)),
             };
             var evidence = new Evidence([new Zone(zone), new System.Runtime.Hosting.ActivationArguments(new System.ApplicationIdentity(""))], null);
 
@@ -278,7 +278,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
             {
                 Fx2MajorVersion => CreateXmlDocV2(targetZone),
                 Fx3MajorVersion => CreateXmlDocV3(targetZone),
-                _ => throw new ArgumentException(String.Empty /* no message */, nameof(majorVersion)),
+                _ => throw new ArgumentException(string.Empty /* no message */, nameof(majorVersion)),
             };
             XmlElement rootElement = doc.DocumentElement;
 
@@ -301,7 +301,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                     doc.LoadXml(InternetPermissionSetXml);
                     return doc;
                 default:
-                    throw new ArgumentException(String.Empty /* no message */, nameof(targetZone));
+                    throw new ArgumentException(string.Empty /* no message */, nameof(targetZone));
             }
         }
 
@@ -321,20 +321,20 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                     doc.LoadXml(InternetPermissionSetWithWPFXml);
                     return doc;
                 default:
-                    throw new ArgumentException(String.Empty /* no message */, nameof(targetZone));
+                    throw new ArgumentException(string.Empty /* no message */, nameof(targetZone));
             }
         }
 
         internal static bool ParseElementForAssemblyIdentification(SecurityElement el,
-                                                                   out String className,
-                                                                   out String assemblyName, // for example "WindowsBase"
-                                                                   out String assemblyVersion)
+                                                                   out string className,
+                                                                   out string assemblyName, // for example "WindowsBase"
+                                                                   out string assemblyVersion)
         {
             className = null;
             assemblyName = null;
             assemblyVersion = null;
 
-            String fullClassName = el.Attribute("class");
+            string fullClassName = el.Attribute("class");
 
             if (fullClassName == null)
             {
@@ -357,7 +357,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
 
             int namespaceClassNameLength = commaIndex;
             className = fullClassName.Substring(0, namespaceClassNameLength);
-            String assemblyFullName = fullClassName.Substring(commaIndex + 1);
+            string assemblyFullName = fullClassName.Substring(commaIndex + 1);
             var an = new AssemblyName(assemblyFullName);
             assemblyName = an.Name;
             assemblyVersion = an.Version.ToString();
@@ -486,7 +486,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
             catch (ArgumentException ex)
             {
                 // UNDONE: Need to log exception thrown from PermissionSet.FromXml
-                Debug.Fail(String.Format(CultureInfo.CurrentCulture, "PermissionSet.FromXml failed: {0}\r\n\r\n{1}", ex.Message, element.OuterXml));
+                Debug.Fail(string.Format(CultureInfo.CurrentCulture, "PermissionSet.FromXml failed: {0}\r\n\r\n{1}", ex.Message, element.OuterXml));
                 return null;
             }
             return ps;
@@ -558,7 +558,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
         {
             System.Resources.ResourceManager resources = new System.Resources.ResourceManager("Microsoft.Build.Tasks.Core.Strings.ManifestUtilities", typeof(SecurityUtilities).Module.Assembly);
 
-            if (String.IsNullOrEmpty(certThumbprint))
+            if (string.IsNullOrEmpty(certThumbprint))
             {
                 throw new ArgumentNullException(nameof(certThumbprint));
             }
@@ -569,7 +569,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                 throw new ArgumentException(resources.GetString("CertNotInStore"), nameof(certThumbprint));
             }
 
-            if (!String.IsNullOrEmpty(targetFrameworkVersion))
+            if (!string.IsNullOrEmpty(targetFrameworkVersion))
             {
                 Version targetVersion = Util.GetTargetFrameworkVersion(targetFrameworkVersion);
 
@@ -579,7 +579,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                 }
 
                 bool isTargetFrameworkSha256Supported = false;
-                if (String.IsNullOrEmpty(targetFrameworkIdentifier) ||
+                if (string.IsNullOrEmpty(targetFrameworkIdentifier) ||
                     targetFrameworkIdentifier.Equals(Constants.DotNetFrameworkIdentifier, StringComparison.InvariantCultureIgnoreCase))
                 {
                     // SHA-256 digest can be parsed only with .NET 4.5 or higher.
@@ -653,14 +653,14 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                 throw new ArgumentNullException(nameof(cert));
             }
 
-            if (String.IsNullOrEmpty(path))
+            if (string.IsNullOrEmpty(path))
             {
                 throw new ArgumentNullException(nameof(path));
             }
 
             if (!FileSystems.Default.FileExists(path))
             {
-                throw new FileNotFoundException(String.Format(CultureInfo.InvariantCulture, resources.GetString("SecurityUtil.SignTargetNotFound"), path), path);
+                throw new FileNotFoundException(string.Format(CultureInfo.InvariantCulture, resources.GetString("SecurityUtil.SignTargetNotFound"), path), path);
             }
 
             bool useSha256 = UseSha256Algorithm(cert) && targetFrameworkSupportsSha256;
@@ -810,13 +810,13 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                         break;
                     case 1:
                         // error, report it
-                        throw new ApplicationException(String.Format(CultureInfo.InvariantCulture, resources.GetString("SecurityUtil.SigntoolFail"), path, signTool.StandardError.ReadToEnd()));
+                        throw new ApplicationException(string.Format(CultureInfo.InvariantCulture, resources.GetString("SecurityUtil.SigntoolFail"), path, signTool.StandardError.ReadToEnd()));
                     case 2:
                         // warning, report it
-                        throw new WarningException(String.Format(CultureInfo.InvariantCulture, resources.GetString("SecurityUtil.SigntoolWarning"), path, signTool.StandardError.ReadToEnd()));
+                        throw new WarningException(string.Format(CultureInfo.InvariantCulture, resources.GetString("SecurityUtil.SigntoolWarning"), path, signTool.StandardError.ReadToEnd()));
                     default:
                         // treat as error
-                        throw new ApplicationException(String.Format(CultureInfo.InvariantCulture, resources.GetString("SecurityUtil.SigntoolFail"), path, signTool.StandardError.ReadToEnd()));
+                        throw new ApplicationException(string.Format(CultureInfo.InvariantCulture, resources.GetString("SecurityUtil.SigntoolFail"), path, signTool.StandardError.ReadToEnd()));
                 }
             }
             finally
@@ -876,7 +876,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
             }
             if (!FileSystems.Default.FileExists(toolPath))
             {
-                throw new ApplicationException(String.Format(CultureInfo.CurrentCulture,
+                throw new ApplicationException(string.Format(CultureInfo.CurrentCulture,
                     resources.GetString("SecurityUtil.SigntoolNotFound"), toolPath));
             }
 
