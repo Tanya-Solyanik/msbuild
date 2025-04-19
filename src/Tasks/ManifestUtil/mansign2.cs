@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography.Xml;
@@ -260,6 +261,8 @@ namespace System.Deployment.Internal.CodeSigning
         private CmiStrongNameSignerInfo _strongNameSignerInfo = null;
         private CmiAuthenticodeSignerInfo _authenticodeSignerInfo = null;
         private readonly bool _useSha256;
+        private readonly HashAlgorithmType _digest;
+        private readonly HashAlgorithmType _manifestSignature;
 
         private const string Sha256SignatureMethodUri = @"http://www.w3.org/2000/09/xmldsig#rsa-sha256";
         private const string Sha256DigestMethod = @"http://www.w3.org/2000/09/xmldsig#sha256";
@@ -268,10 +271,12 @@ namespace System.Deployment.Internal.CodeSigning
 
         private SignedCmiManifest2() { }
 
-        internal SignedCmiManifest2(XmlDocument manifestDom, bool useSha256)
+        internal SignedCmiManifest2(XmlDocument manifestDom, bool useSha256, HashAlgorithmType digest, HashAlgorithmType manifestSignature)
         {
             _manifestDom = manifestDom ?? throw new ArgumentNullException(nameof(manifestDom));
             _useSha256 = useSha256;
+            _digest = digest;
+            _manifestSignature = manifestSignature;
         }
 
         internal void Sign(CmiManifestSigner2 signer)
@@ -635,8 +640,8 @@ namespace System.Deployment.Internal.CodeSigning
             signedXml.SignedInfo.CanonicalizationMethod = SignedXml.XmlDsigExcC14NTransformUrl;
             if (signer.UseSha256)
             {
-                    signedXml.SignedInfo.SignatureMethod = Sha256SignatureMethodUri;
-                }
+                signedXml.SignedInfo.SignatureMethod = Sha256SignatureMethodUri;
+            }
             else
             {
                 signedXml.SignedInfo.SignatureMethod = Sha1SignatureMethodUri;
@@ -1006,14 +1011,16 @@ namespace System.Deployment.Internal.CodeSigning
         private X509IncludeOption _includeOption;
         private CmiManifestSignerFlag _signerFlag;
         private readonly bool _useSha256;
+        private readonly HashAlgorithmType _digest;
+        private readonly HashAlgorithmType _manifestSignature;
 
         private CmiManifestSigner2() { }
 
         internal CmiManifestSigner2(AsymmetricAlgorithm strongNameKey) :
-            this(strongNameKey, certificate: null, useSha256: false)
+            this(strongNameKey, certificate: null, useSha256: false, digest: HashAlgorithmType.None, manifestSignature: HashAlgorithmType.None)
         { }
 
-        internal CmiManifestSigner2(AsymmetricAlgorithm strongNameKey, X509Certificate2 certificate, bool useSha256)
+        internal CmiManifestSigner2(AsymmetricAlgorithm strongNameKey, X509Certificate2 certificate, bool useSha256, HashAlgorithmType digest, HashAlgorithmType manifestSignature)
         {
             if (strongNameKey == null)
             {
@@ -1032,6 +1039,8 @@ namespace System.Deployment.Internal.CodeSigning
             _includeOption = X509IncludeOption.ExcludeRoot;
             _signerFlag = CmiManifestSignerFlag.None;
             _useSha256 = useSha256;
+            _digest = digest;
+            _manifestSignature = manifestSignature;
         }
 
         internal bool UseSha256

@@ -31,6 +31,7 @@ using System.Security.Policy;
 using System.Text;
 using System.Xml;
 using Microsoft.Build.Shared.FileSystem;
+using System.Security.Authentication;
 
 #nullable disable
 
@@ -590,7 +591,8 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                     // Use SHA-256 digest for .NET Core apps
                     isTargetFrameworkSha256Supported = true;
                 }
-                SignFileInternal(cert, timestampUrl, path, isTargetFrameworkSha256Supported, resources, disallowMansignTimestampFallback);
+
+                SignFileInternal(cert, timestampUrl, path, isTargetFrameworkSha256Supported, HashAlgorithmType.None, HashAlgorithmType.None, resources, disallowMansignTimestampFallback);
             }
             else
             {
@@ -637,7 +639,23 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
         {
             // setup resources
             System.Resources.ResourceManager resources = new System.Resources.ResourceManager("Microsoft.Build.Tasks.Core.Strings.ManifestUtilities", typeof(SecurityUtilities).Module.Assembly);
-            SignFileInternal(cert, timestampUrl, path, targetFrameworkSupportsSha256: true, resources);
+            SignFileInternal(cert, timestampUrl, path, targetFrameworkSupportsSha256: true, digest: HashAlgorithmType.None, manifestSignature: HashAlgorithmType.None, resources);
+        }
+
+        /// <summary>
+        /// Signs a ClickOnce manifest.
+        /// </summary>
+        /// <param name="cert">The certificate to be used to sign the file.</param>
+        /// <param name="timestampUrl">URL that specifies an address of a time stamping server.</param>
+        /// <param name="path">Path of the file to sign with the certificate.</param>
+        /// <param name="digest"></param>
+        /// <param name="manifestSignature"></param>
+        [SupportedOSPlatform("windows")]
+        public static void SignFile(X509Certificate2 cert, Uri timestampUrl, string path, HashAlgorithmType digest, HashAlgorithmType manifestSignature)
+        {
+            // setup resources
+            System.Resources.ResourceManager resources = new("Microsoft.Build.Tasks.Core.Strings.ManifestUtilities", typeof(SecurityUtilities).Module.Assembly);
+            SignFileInternal(cert, timestampUrl, path, targetFrameworkSupportsSha256: true, digest, manifestSignature, resources);
         }
 
         [SupportedOSPlatform("windows")]
@@ -645,6 +663,8 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                                             Uri timestampUrl,
                                             string path,
                                             bool targetFrameworkSupportsSha256,
+                                            HashAlgorithmType digest,
+                                            HashAlgorithmType manifestSignature,
                                             System.Resources.ResourceManager resources,
                                             bool disallowMansignTimestampFallback = false)
         {
@@ -663,12 +683,11 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                 throw new FileNotFoundException(string.Format(CultureInfo.InvariantCulture, resources.GetString("SecurityUtil.SignTargetNotFound"), path), path);
             }
 
-            bool useSha256 = UseSha256Algorithm(cert) && targetFrameworkSupportsSha256;
-
             if (PathUtil.IsPEFile(path))
             {
                 if (IsCertInStore(cert))
                 {
+                    bool useSha256 = UseSha256Algorithm(cert) && targetFrameworkSupportsSha256;
                     SignPEFile(cert, timestampUrl, path, resources, useSha256);
                 }
                 else
@@ -678,6 +697,22 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
             }
             else
             {
+                if (digest != HashAlgorithmType.None)
+                {
+                    if (targetFrameworkSupportsSha256 != IsSha2Family(digest))
+                    {
+                        throw new ArgumentException($"Digest algorithm {digest} is not compatible with the target framework.");
+                    }
+                }
+
+                if (manifestSignature != HashAlgorithmType.None)
+                {
+                    if (targetFrameworkSupportsSha256 != IsSha2Family(manifestSignature))
+                    {
+                        throw new ArgumentException($"Manifest signature algorithm {manifestSignature} is not compatible with the target framework.");
+                    }
+                }
+
 #if RUNTIME_TYPE_NETCORE
                 IntPtr hModule = IntPtr.Zero;
 
@@ -702,17 +737,17 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                             doc.Load(xr);
                         }
 
-                        var manifest = new SignedCmiManifest2(doc, useSha256);
+                        var manifest = new SignedCmiManifest2(doc, targetFrameworkSupportsSha256, digest, manifestSignature);
                         CmiManifestSigner2 signer;
-                        if (useSha256 && rsa is RSACryptoServiceProvider rsacsp)
+                        if (targetFrameworkSupportsSha256 && rsa is RSACryptoServiceProvider rsacsp)
                         {
 #pragma warning disable CA2000 // Dispose objects before losing scope because CmiManifestSigner2 will dispose the RSACryptoServiceProvider
-                            signer = new CmiManifestSigner2(SignedCmiManifest2.GetFixedRSACryptoServiceProvider(rsacsp, useSha256), cert, useSha256);
+                            signer = new CmiManifestSigner2(SignedCmiManifest2.GetFixedRSACryptoServiceProvider(rsacsp, targetFrameworkSupportsSha256), cert, targetFrameworkSupportsSha256, digest, manifestSignature);
 #pragma warning restore CA2000 // Dispose objects before losing scope
                         }
                         else
                         {
-                            signer = new CmiManifestSigner2(rsa, cert, useSha256);
+                            signer = new CmiManifestSigner2(rsa, cert, targetFrameworkSupportsSha256, digest, manifestSignature);
                         }
 
 #if RUNTIME_TYPE_NETCORE
@@ -762,6 +797,9 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
 #endif
                 }
             }
+
+            static bool IsSha2Family(HashAlgorithmType type)
+                => type == HashAlgorithmType.Sha256 || type == HashAlgorithmType.Sha384 || type == HashAlgorithmType.Sha512;
         }
 
         private static void SignPEFile(X509Certificate2 cert, Uri timestampUrl, string path, System.Resources.ResourceManager resources, bool useSha256)

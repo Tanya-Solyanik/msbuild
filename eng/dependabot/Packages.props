@@ -28,6 +28,9 @@
     <PackageVersion Include="Microsoft.Win32.Registry" Version="5.0.0" />
     <PackageVersion Update="Microsoft.Win32.Registry" Condition="'$(MicrosoftWin32RegistryVersion)' != ''" Version="$(MicrosoftWin32RegistryVersion)" />
 
+    <PackageVersion Include="System.Net.Primitives" Version="4.3.1" />
+    <PackageVersion Update="System.Net.Primitives" Condition="'$(SystemNetPrimitivesVersion)' != ''" Version="$(SystemNetPrimitivesVersion)" />
+
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageVersion Update="Newtonsoft.Json" Condition="'$(NewtonsoftJsonVersion)' != ''" Version="$(NewtonsoftJsonVersion)" />
 
